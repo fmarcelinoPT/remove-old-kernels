@@ -1,10 +1,10 @@
-## `remove_old_kernels.sh`
+# `remove_old_kernels.sh`
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 This script is designed to help manage and remove old Linux kernels and their associated modules from a system, helping to free up disk space and maintain a clean environment. Here's a breakdown of what each part of the script does:
 
-### 1. Script Header and Usage Instructions
+## 1. Script Header and Usage Instructions
 
 ```bash
 #!/bin/bash -e
@@ -16,7 +16,7 @@ This script is designed to help manage and remove old Linux kernels and their as
 - The script uses the Bash shell (`#!/bin/bash`) and the `-e` flag causes the script to exit immediately if any command fails.
 - The comments explain that the script can be run in a "dry run" mode without arguments, or with the "exec" argument to actually perform the cleanup.
 
-### 2. Identifying the Currently In-Use Kernel
+## 2. Identifying the Currently In-Use Kernel
 
 ```bash
 uname -a
@@ -28,7 +28,7 @@ echo "Your in use kernel is $IN_USE"
 - The script then extracts the kernel version using `awk` and stores it in the `IN_USE` variable.
 - This kernel version is important because it should not be removed.
 
-### 3. Finding Old Kernels to Remove
+## 3. Finding Old Kernels to Remove
 
 ```bash
 OLD_KERNELS=$(
@@ -49,7 +49,7 @@ echo "$OLD_KERNELS"
 - The remaining packages, which include older kernels, headers, and modules, are captured in the `OLD_KERNELS` variable.
 - These are the kernel packages that the script suggests for removal.
 
-### 4. Finding Old Kernel Modules to Remove
+## 4. Finding Old Kernel Modules to Remove
 
 ```bash
 OLD_MODULES=$(
@@ -65,7 +65,7 @@ echo "$OLD_MODULES"
 - It then filters out the directory for the currently running kernel and stores the rest in `OLD_MODULES`.
 - These are the old module directories that could be safely removed.
 
-### 5. Conditional Execution for Actual Removal
+## 5. Conditional Execution for Actual Removal
 
 ```bash
 if [ "$1" == "exec" ]; then
@@ -82,22 +82,34 @@ fi
 - The script also removes the old module directories using `rm -rf`.
 - If the script is run without the `exec` argument, it only prints the old kernels and modules that would be removed, serving as a "dry run."
 
-### Summary
+## Summary
 
 - The script is a safe way to clean up old kernels and modules from a Linux system.
 - Running it without arguments shows what would be removed, while running it with the `exec` argument actually performs the cleanup.
 - This approach helps avoid accidentally removing the kernel currently in use.
 
-### Usage
+## Usage
 
-#### 1. Analyze what can be deleted (dry run)
+### 1. Analyze what can be deleted (dry run)
 
 ```bash
 bash remove_old_kernels.sh
 ```
 
-#### 2. Execute kernel deletion
+### 2. Execute kernel deletion
 
 ```bash
 sudo bash remove_old_kernels.sh exec
 ```
+
+## Contributing
+
+Contributions to this project are welcome. If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
+## License
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Author Information
+
+This role was created at 2024 by [fmarcelinoPT](https://github.com/fmarcelinoPT). Feel free to customize or extend the role to fit your needs.
