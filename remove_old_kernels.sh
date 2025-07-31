@@ -1,59 +1,99 @@
 #!/bin/bash -e
-# Run this script without any arguments for a dry run
-# Run the script with root and with exec arguments for removing old kernels and modules after checking
-# the list printed in the dry run
 
-uname -a
-IN_USE=$(uname -a | awk '{ print $3 }')
-echo "Your in use kernel is $IN_USE"
+# Cross-compatible script to remove old kernels on Ubuntu or Red Hat-based systems
+# Dry run by default; use 'exec' as first argument to perform deletions
+
+OS=""
+IN_USE_KERNEL=$(uname -r)
+IN_USE_SHORT=${IN_USE_KERNEL%%-*}
+
+echo "In-use kernel: $IN_USE_KERNEL"
 echo ""
 
-OLD_KERNELS=$(
-    dpkg --get-selections |
-        grep -v "linux-headers-generic" |
-        grep -v "linux-image-generic" |
-        grep -v "linux-image-generic" |
-        grep -v "${IN_USE%%-generic}" |
+# Detect distro
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$ID
+else
+    echo "Cannot detect OS. Exiting."
+    exit 1
+fi
+
+# Ubuntu / Debian
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    echo "Detected Debian-based system: $OS"
+
+    OLD_KERNELS=$(
+        dpkg --get-selections |
         grep -Ei 'linux-image|linux-headers|linux-modules' |
+        grep -v "${IN_USE_SHORT}" |
         awk '{ print $1 }'
-)
+    )
 
-if [[ -z "$OLD_KERNELS" ]]; then
-  echo "No old kernels found."
+    OLD_MODULES=$(
+        ls /lib/modules |
+        grep -v "${IN_USE_KERNEL}"
+    )
+
+    if [[ -n "$OLD_KERNELS" || -n "$OLD_MODULES" ]]; then
+        echo "Old kernel packages to remove:"
+        echo "$OLD_KERNELS"
+        echo ""
+        echo "Old kernel modules to remove:"
+        echo "$OLD_MODULES"
+        echo ""
+
+        if [[ "$1" == "exec" ]]; then
+            apt-get purge -y $OLD_KERNELS
+            for mod in $OLD_MODULES; do
+                rm -rf "/lib/modules/$mod"
+            done
+        else
+            echo "Dry run completed. To delete, run as: sudo $0 exec"
+        fi
+    else
+        echo "No old kernels/modules found to delete."
+    fi
+
+# Red Hat / CentOS / Rocky / AlmaLinux
+elif [[ "$OS" == "rhel" || "$OS" == "centos" || "$OS" == "rocky" || "$OS" == "almalinux" || "$OS" == "fedora" ]]; then
+    echo "Detected Red Hat-based system: $OS"
+
+    OLD_KERNELS=$(
+        rpm -q kernel |
+        grep -v "$IN_USE_KERNEL"
+    )
+
+    OLD_MODULES=$(
+        ls /lib/modules |
+        grep -v "${IN_USE_KERNEL}"
+    )
+
+    if [[ -n "$OLD_KERNELS" || -n "$OLD_MODULES" ]]; then
+        echo "Old kernel RPMs to remove:"
+        echo "$OLD_KERNELS"
+        echo ""
+        echo "Old kernel modules to remove:"
+        echo "$OLD_MODULES"
+        echo ""
+
+        if [[ "$1" == "exec" ]]; then
+            if command -v dnf >/dev/null 2>&1; then
+                dnf remove -y $OLD_KERNELS
+            else
+                yum remove -y $OLD_KERNELS
+            fi
+            for mod in $OLD_MODULES; do
+                rm -rf "/lib/modules/$mod"
+            done
+        else
+            echo "Dry run completed. To delete, run as: sudo $0 exec"
+        fi
+    else
+        echo "No old kernels/modules found to delete."
+    fi
+
 else
-  echo "Old Kernels to be removed:"
-  echo "$OLD_KERNELS"
-fi
-
-echo ""
-
-OLD_MODULES=$(
-    ls /lib/modules |
-    grep -v "${IN_USE%%-generic}" |
-    grep -v "${IN_USE}"
-)
-
-if [[ -z "$OLD_MODULES" ]]; then
-  echo "No old modules found."
-else
-  echo "Old Modules to be removed:"
-  echo "$OLD_MODULES"
-fi
-
-echo ""
-echo ""
-
-# Combine check and message for clarity
-if [[ -n "$OLD_KERNELS" || -n "$OLD_MODULES" ]]; then
-  if [ "$1" == "exec" ]; then
-    apt-get purge $OLD_KERNELS
-    for module in $OLD_MODULES ; do
-      rm -rf /lib/modules/$module/
-    done
-  else
-    echo "If all looks good, run it again like this: sudo   
- remove_old_kernels.sh exec"
-  fi
-else
-  echo "Nothing found to delete."
+    echo "Unsupported or unknown OS: $OS"
+    exit 2
 fi
